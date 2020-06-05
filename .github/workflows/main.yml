@@ -1,0 +1,57 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    - name: Run a multi-line script
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        REPO_TO_CHECK: Warzone2100/wz2100.net
+        GH_PAGES_BRANCH_COMMIT_SHA: a0addf611e5220010e926f4bf5d07a7074479df8
+      run: |
+        echo "Searching for deployment matching commit: ${GH_PAGES_BRANCH_COMMIT_SHA} ..."
+        # Poll until we find a deployment with a sha == the push's commit's SHA
+        status=1
+        POLL_ATTEMPTS=0
+        while [ $POLL_ATTEMPTS -le 15 ]
+        do
+          sleep_interval=$(( POLL_ATTEMPTS * POLL_ATTEMPTS ))
+          if [ $sleep_interval -ne 0 ]; then
+            echo "Sleeping ${sleep_interval} seconds..."
+          fi
+          sleep ${sleep_interval}
+          curl -H "Authorization: token ${GITHUB_TOKEN}" -s "https://api.github.com/repos/${REPO_TO_CHECK}/deployments" | jq --exit-status --arg desired_sha "${GH_PAGES_BRANCH_COMMIT_SHA}" '.[] | select(.sha == $desired_sha and .environment == "github-pages")' > "deployment.json"
+          status=$?
+          (( POLL_ATTEMPTS++ ))
+          if [ $status -eq 0 ]; then
+            break
+          fi
+        done
+        if [ $status -ne 0 ]; then
+          # Did not find matching deployment
+          echo "::error ::Failed to find matching deployment for: ${GITHUB_SHA}"
+          exit 1
+        fi
+        DEPLOYMENT_ID=$(cat "deployment.json" | jq --raw-output '.id')
+        if [ -z "$DEPLOYMENT_ID" ]; then
+          echo "::error ::Missing expected '.id' field"
+          exit 1
+        fi
+        echo "Found deployment ID: ${DEPLOYMENT_ID}"
+        echo "::set-output name=DEPLOYMENT_ID::${DEPLOYMENT_ID}"
