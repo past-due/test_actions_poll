@@ -35,7 +35,9 @@ jobs:
           if [ $sleep_interval -ne 0 ]; then
             echo "Sleeping ${sleep_interval} seconds..."
           fi
+          echo "Calling sleep"
           sleep ${sleep_interval}
+          echo "After sleep"
           curl -H "Authorization: token ${GITHUB_TOKEN}" -s "https://api.github.com/repos/${REPO_TO_CHECK}/deployments" | jq --exit-status --arg desired_sha "${GH_PAGES_BRANCH_COMMIT_SHA}" '.[] | select(.sha == $desired_sha and .environment == "github-pages")' > "deployment.json"
           status=$?
           (( POLL_ATTEMPTS++ ))
@@ -45,11 +47,13 @@ jobs:
         done
         if [ $status -ne 0 ]; then
           # Did not find matching deployment
+          echo "error 1"
           echo "::error ::Failed to find matching deployment for: ${GITHUB_SHA}"
           exit 1
         fi
         DEPLOYMENT_ID=$(cat "deployment.json" | jq --raw-output '.id')
         if [ -z "$DEPLOYMENT_ID" ]; then
+          echo "error 2"
           echo "::error ::Missing expected '.id' field"
           exit 1
         fi
