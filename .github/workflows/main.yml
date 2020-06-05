@@ -24,6 +24,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         REPO_TO_CHECK: Warzone2100/wz2100.net
         GH_PAGES_BRANCH_COMMIT_SHA: a0addf611e5220010e926f4bf5d07a7074479df8
+      shell: bash --noprofile --norc {0}
       run: |
         echo "Searching for deployment matching commit: ${GH_PAGES_BRANCH_COMMIT_SHA} ..."
         # Poll until we find a deployment with a sha == the push's commit's SHA
